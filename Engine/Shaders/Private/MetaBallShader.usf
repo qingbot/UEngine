@@ -1,0 +1,184 @@
+﻿#include "Common.ush"
+#include "BRDF.ush"
+#include "BurleyNormalizedSSSCommon.ush"
+#include "/Engine/Public/Platform.ush"
+void MainVS(in float4 InPosition : ATTRIBUTE0,out float2 OutTexCoord : TEXCOORD0, out float4 Output : SV_POSITION)
+{
+	Output = InPosition;
+	//OutTexCoord = InPosition * ResolvedView.ScreenPositionScaleBias.xy + ResolvedView.ScreenPositionScaleBias.wz;
+	OutTexCoord = InPosition.xy * 0.5f + 0.5f;
+	OutTexCoord.y = 1 - OutTexCoord.y;
+	//OutTexCoord = InPosition.xy;
+}
+// MetaBallUniformBuffer
+float4 MyColor;
+
+// 球的距离场
+float SDSphere(float3 p,float Radius)
+{
+	return length(p) - Radius;
+}
+
+float Smin(float a,float b, float k)
+{
+	float h = max(k - abs(a - b), 0.0);
+	return min(a,b) - h * h * 0.25 / k;
+}
+
+float Metaballs(float3 p) {
+return 1.0f;
+	
+}
+
+float GetDistance(float3 p)
+{
+	float Final = 999999;
+	float Radius = MetaBallUniformBuffer.MetaBallRadius;
+	for(int i = 0; i < 64; ++i)
+	{
+		float d = SDSphere(p - MetaBallUniformBuffer.Actors[i], Radius);
+		Final = Smin(Final,d, MetaBallUniformBuffer.RayStep);
+	}
+	return Final;
+}
+
+// 计算法线
+// p = 目标位置
+// 梯度就是法线
+float3 GetNormal(float3 p)
+{
+	float3 n = float3(0.0,0.0,0.0);
+	float eps = 0.1;
+	float base = Metaballs(p);
+	n.x = Metaballs(float3(p.x + eps, p.y,p.z)) - base;
+	n.y = Metaballs(float3(p.x, p.y +eps, p.z)) - base;
+	n.z = Metaballs(float3(p.x,p.y,p.z + eps)) - base;
+	
+	return normalize(-n);
+}
+
+bool RayCast(float3 origin, float3 dir, out float distanceFiled)
+{
+	float d = 5.0f;
+	float totalDis = 0.0f;
+	const float MetaBallTreshold = MetaBallUniformBuffer.MetaBallTreshold;
+
+	bool result = false;
+	float3 p = 0.0f;
+	for(int i = 0; i < 500; ++i)
+	{
+		p = origin + totalDis * dir;
+		float dist = Metaballs(p);
+
+		if(dist > MetaBallTreshold)
+		{
+			result = true;
+			if(dist < MetaBallTreshold + 0.1f)
+			{
+				break;
+			}
+			else
+			{
+				d *= 0.5f;
+				totalDis -= d;
+			}
+		}
+		else
+		{
+			d *= 1.1f;
+			d = min(d, MetaBallUniformBuffer.MetaBallRadius);
+			totalDis += d;
+		}
+	}
+
+	distanceFiled = totalDis;
+	return result;
+}
+
+float3 GetNormal1(float3 Position)
+{
+	float3 Normal = 0.0f;
+	float eps = 0.1f;
+	float BaseDistance = GetDistance(Position);
+	Normal.x = GetDistance(float3(Position.x + eps,Position.y,Position.z)) - BaseDistance;
+	Normal.y = GetDistance(float3(Position.x, Position.y + eps,Position.z)) - BaseDistance;
+	Normal.z = GetDistance(float3(Position.x,Position.y,Position.z + eps)) - BaseDistance;
+
+	return normalize(Normal);
+}
+
+bool RayCast1(float3 Origin,float3 Dir,out float DistanceFiled)
+{
+	float D = 0;
+	for(int i = 0; i < 32; ++i)
+	{
+		float3 CurrentPosition = Origin + Dir * D;
+		float Distance = GetDistance(CurrentPosition);
+		D += Distance;
+		if(Distance < MetaBallUniformBuffer.MetaBallTreshold)
+		{
+			DistanceFiled = D;
+			return true;
+		}
+	}
+	DistanceFiled = D;
+	return false;
+}
+
+/*
+ * 计算出射线方向
+ * 从Buffer中获取当前区域的MetaBall的信息的索引
+ * Buffer是一个贴图，格式是R8G8B8A8, 一个像素存储4个MetaBall的信息
+ * 索引指向一个MetaBall数组，数组是一个float4(metaBallPos, d)
+ *
+ * 在BurleyNormalizedSSSCommon.ush里面 有一个Burley_Profile的sss函数
+ */
+float4 MainPS(in float2 UV : TEXCOORD0,float4 SVPos : SV_POSITION):SV_Target0
+{
+	//return MetaBallShaderParameter.MyColor;
+	//return float4(1,1,0,1);
+	//float2 svPos = UV * 2 - 1;
+	
+	float DeviceZ = Texture2DSampleLevel(SceneTexturesStruct.SceneDepthTexture, SceneTexturesStruct_PointClampSampler, UV, 0).r;
+
+	// 这个名字是正确的，这真的是摄像机空间的坐标
+	float3 WorldPositionRelativeToCamera = SvPositionToTranslatedWorld(float4(SVPos.xy, max(1.5e-10, DeviceZ), 1.0)) ;//+ View.RelativeWorldCameraOrigin;
+	
+	float d = length(WorldPositionRelativeToCamera);
+	
+	float3 cameraPos = View.RelativeWorldCameraOrigin.xyz;
+	//float3 cameraPos = LWCHackToFloat( ResolvedView.WorldCameraOrigin);
+	float3 worldDir = normalize(WorldPositionRelativeToCamera);
+	
+	float distanceFiled ;
+	//bool isTouch = RayCast(cameraPos, worldDir, distanceFiled);
+	bool isTouch = RayCast1(cameraPos,worldDir,distanceFiled);
+	
+	if(isTouch)
+	{
+		if(distanceFiled > d)
+			return float4(0.0f,0.0f,0.0f,0.0f);
+		float3 pos = cameraPos + worldDir * distanceFiled;
+		float3 Normal = GetNormal1(pos);
+		float3 MainLightDirection = View.AtmosphereLightDirection[0];
+
+		float3 H = normalize(-worldDir + MainLightDirection);
+		float VoH = saturate(dot(-worldDir, H));
+		
+		float F0 = 0.02f;
+		float3 R0 = F_Fresnel(float3(F0,F0,F0),VoH);
+		float cos_theta = dot(-worldDir, Normal);
+		float3 fresnel = R0 + (1.0f - R0) * pow(1.0 - cos_theta, 5.0f);
+		fresnel = saturate(fresnel);
+
+		float3 sss = Burley_Profile(1 - fresnel.x, MetaBallUniformBuffer.BallColor2.xyz, MetaBallUniformBuffer.BallColor1.xyz, MetaBallUniformBuffer.BallColor1.w);
+
+		return float4(fresnel + sss * (1 - MetaBallUniformBuffer.BallColor0.w )+ MetaBallUniformBuffer.BallColor0.xyz * MetaBallUniformBuffer.BallColor0.w,1);
+		
+		return float4(F_Fresnel(float3(F0,F0,F0),VoH),1);
+		return float4(Normal,1);
+		
+		//float3 H = normalize(worldDir,View)
+	}
+	return float4(0.0f,0.0f,0.0f,0.0f);
+}
