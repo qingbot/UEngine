@@ -426,6 +426,18 @@ public:
 	// debug/dev-time 
 	//----------------------------------------------------------------------//
 	virtual FString GetDebugIcon() const;
+
+	// 当前是否可以发起攻击
+	virtual bool CanFire(){return false;}
+	// 攻击目标, 这只是攻击这一行为，不负责做各种判定
+	// 如果是坦克，就只是以当前的炮塔角度，开一炮，需要在之前设置好角度
+	virtual void Fire(){}
+
+	// 当敌人进入攻击范围，比如说玩家进入了坦克的射程之内，那么此函数就应当调整好炮塔
+	// CanFire函数就应当负责判断炮塔是否对准
+	virtual void OnAnyEnemyEnterToRange(){}
+	virtual void OnEnemyEnterToRange(AActor* Target){}
+	virtual void OnEnemyEnterToRange(TArray<AActor*> Targets){}
 	
 	// Cheat/debugging functions
 	static void ToggleAIIgnorePlayers() { bAIIgnorePlayers = !bAIIgnorePlayers; }
