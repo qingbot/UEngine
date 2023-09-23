@@ -1841,7 +1841,6 @@ FScene::FScene(UWorld* InWorld, bool bInRequiresHitProxies, bool bInIsEditorScen
 ,	DefaultLumenSceneData(nullptr)
 ,	PreshadowCacheLayout(0, 0, 0, 0, false)
 ,	SkyAtmosphere(NULL)
-,   MetaBall(NULL)
 ,	VolumetricCloud(NULL)
 ,	PrecomputedVisibilityHandler(NULL)
 ,	LocalShadowCastingLightOctree(FVector::ZeroVector, UE_OLD_HALF_WORLD_MAX)
@@ -4003,30 +4002,39 @@ void FScene::RemoveLight(ULightComponent* Light)
 	}
 }
 
-void FScene::AddMetaBallRender(FMetaBallSceneInfo* MetaBallComponent)
+// 使用多线程For来复制
+// 既然一定要有一个个的复制操作，那不如复制的时候顺便进行第一次分割
+void FScene::AddMetaBallRender(const FMetaBallSceneInfo* MetaBallComponent)
 {
 	FScene* Scene = this;
 	
 	ENQUEUE_RENDER_COMMAND(FAddMetaBallCommand)(
 		[Scene,MetaBallComponent](FRHICommandListImmediate& RHICmdList)
 		{
-			Scene->MetaBall = MetaBallComponent;
-			FMetaBallUniformBuffer Buffer;
+			//Scene->MetaBall = MetaBallComponent;
 			
+			FMetaBallUniformBuffer Buffer;
 			Buffer.WorldPos0 = MetaBallComponent->WorldPos0;
 			Buffer.WorldPos1 = MetaBallComponent->WorldPos1;
 			Buffer.WorldPos2 = MetaBallComponent->WorldPos2;
 			Buffer.BallColor0 = MetaBallComponent->BallColor0;
 			Buffer.BallColor1 = MetaBallComponent->BallColor1;
 			Buffer.BallColor2 = MetaBallComponent->BallColor2;
-			Buffer.RayStep = MetaBallComponent->RayStep;
+			Buffer.RayStep = MetaBallComponent->BallSMin;
 			Buffer.MetaBallRadius = MetaBallComponent->MetaBallRadius;
 			Buffer.MetaBallTreshold = MetaBallComponent->MetaBallTreshold;
-			
-			for(int i =0; i < 64; ++i)
+			/*
+			for(int i =0; i < MetaBallComponent->Actors.Num(); ++i)
 			{
 				Buffer.Actors[i] = MetaBallComponent->Actors[i];
 			}
+			*/
+			for(int i = 0; i < MetaBallComponent->AllMetaBall.Num(); ++i)
+			{
+				FVector&& Location = MetaBallComponent->AllMetaBall[i]->GetActorLocation();
+				Buffer.Actors[i] = FVector4f(Location.X,Location.Y,Location.Z);
+			}
+			
 			if(Scene->MetaBallUniformBuffer.IsValid())
 			{
 				Scene->MetaBallUniformBuffer.UpdateUniformBufferImmediate(Buffer);
@@ -4035,6 +4043,7 @@ void FScene::AddMetaBallRender(FMetaBallSceneInfo* MetaBallComponent)
 			{
 				Scene->MetaBallUniformBuffer = TUniformBufferRef<FMetaBallUniformBuffer>::CreateUniformBufferImmediate(Buffer,EUniformBufferUsage::UniformBuffer_MultiFrame);
 			}
+			
 		}
 		);
 }
@@ -4046,7 +4055,7 @@ void FScene::RemoveMetaBallRender()
 		[Scene](FRHICommandListImmediate &RHICmd)
 		{
 			
-			Scene->MetaBall = NULL;
+			// Scene->MetaBall = NULL;
 		}
 	);
 }
@@ -6435,7 +6444,8 @@ public:
 	virtual void UpdateLightTransform(ULightComponent* Light) override {}
 	virtual void UpdateLightColorAndBrightness(ULightComponent* Light) override {}
 
-	virtual void AddMetaBallRender(FMetaBallSceneInfo* MetaBallComponent) override{}
+	//virtual void AddMetaBallRender(const FMetaBallUniformBuffer& MetaBallInfo) override{}
+	virtual void AddMetaBallRender(const FMetaBallSceneInfo* MetaBallComponent) override{}
 	virtual void RemoveMetaBallRender() override{}
 	
 	virtual void AddExponentialHeightFog(class UExponentialHeightFogComponent* FogComponent) override {}

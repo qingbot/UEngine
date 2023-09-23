@@ -323,7 +323,7 @@ public:
 	 * 
 	 * @param FogComponent - fog component to add
 	 */
-	virtual  void AddMetaBallRender(class FMetaBallSceneInfo* MetaBallInfo) = 0;
+	virtual  void AddMetaBallRender(const class FMetaBallSceneInfo* MetaBallInfo) = 0;
 	virtual  void RemoveMetaBallRender() = 0;
 	
 	virtual void AddExponentialHeightFog(class UExponentialHeightFogComponent* FogComponent) = 0;

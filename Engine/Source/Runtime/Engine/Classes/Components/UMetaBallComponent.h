@@ -17,7 +17,7 @@ public:
 	FLinearColor BallColor1;
 	FLinearColor BallColor2;
 
-	float RayStep;
+	float BallSMin;
 	float MetaBallRadius;
 	float MetaBallTreshold;
 	
@@ -26,8 +26,12 @@ public:
 	FMetaBallSceneInfo(){};
 	FMetaBallSceneInfo(const class UMetaBallComponent* MetaBallComponent);
 
-	// 所有的Actors 应该有64个
+	// 所有的需要被渲染的Actors 最大支持256个 64个给Player
 	TArray<FVector4f> Actors;
+	TArray<AActor*> AllMetaBall;
+	
+	// 当前所有激活的Actor的数量，就是上面这个数组的有效长度
+	int ActiveActorsCount = 0;
 };
 
 UCLASS(ClassGroup = Rendering, meta=(BlueprintSpawnableComponent))

@@ -103,7 +103,7 @@ void FDeferredShadingSceneRenderer::RenderMetaBall(FRDGBuilder& RDG,const FMinim
 		
 		// UE_LOG(LogTemp, Warning, TEXT("RenderMetaBall"));
 		
-		PassParameters->MyColor = Scene->MetaBall == NULL ?FVector4f(1,0,0,1):Scene->MetaBall->MetaBallColor;
+		//PassParameters->MyColor = Scene->MetaBall == NULL ?FVector4f(1,0,0,1):Scene->MetaBall->MetaBallColor;
 		PassParameters->RenderTargets[0] = FRenderTargetBinding(SceneTextures.Color.Target, ERenderTargetLoadAction::ELoad);
 		PassParameters->RenderTargets.DepthStencil = FDepthStencilBinding(SceneTextures.Depth.Target, ERenderTargetLoadAction::ELoad, ERenderTargetLoadAction::ELoad, FExclusiveDepthStencil::DepthRead_StencilWrite);
 		

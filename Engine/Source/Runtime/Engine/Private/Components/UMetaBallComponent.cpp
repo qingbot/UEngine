@@ -13,7 +13,7 @@ FMetaBallSceneInfo::FMetaBallSceneInfo(const UMetaBallComponent* MetaBallCompone
 	BallColor0 = FLinearColor::Black;
 	BallColor1 = FLinearColor::Black;
 	BallColor2 = FLinearColor::Black;
-	RayStep = 1;
+	BallSMin = 1;
 	MetaBallRadius = 1;
 }
 
@@ -40,7 +40,7 @@ void UMetaBallComponent::SendRenderTransform_Concurrent()
 	MetaBallSceneInfo->BallColor1 = MetaBallColor1;
 	MetaBallSceneInfo->BallColor2 = MetaBallColor2;
 
-	MetaBallSceneInfo->RayStep = RayStep;
+	MetaBallSceneInfo->BallSMin = RayStep;
 	MetaBallSceneInfo->MetaBallRadius = MetaBallRadius;
 	MetaBallSceneInfo->MetaBallTreshold = MetaBallTreshold;
 
@@ -71,5 +71,5 @@ void UMetaBallComponent::SendRenderTransform_Concurrent()
 		MetaBallSceneInfo->WorldPos2.Z = static_cast<float>(l2.Z);
     }
 	
-	GetWorld()->Scene->AddMetaBallRender(MetaBallSceneInfo);
+	//GetWorld()->Scene->AddMetaBallRender(MetaBallSceneInfo);
 }

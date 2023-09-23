@@ -2928,7 +2928,7 @@ public:
 	/** The static meshes in the scene. */
 	TSparseArray<FStaticMeshBatch*> StaticMeshes;
 
-	FMetaBallSceneInfo *MetaBall;
+	//FMetaBallSceneInfo *MetaBall;
 	TUniformBufferRef<class FMetaBallUniformBuffer> MetaBallUniformBuffer;
 	/** The exponential fog components in the scene. */
 	TArray<FExponentialHeightFogSceneInfo> ExponentialFogs;
@@ -3100,7 +3100,7 @@ public:
 	virtual void GetPrimitiveUniformShaderParameters_RenderThread(const FPrimitiveSceneInfo* PrimitiveSceneInfo, bool& bHasPrecomputedVolumetricLightmap, FMatrix& PreviousLocalToWorld, int32& SingleCaptureIndex, bool& bOutputVelocity) const override;
 	virtual void UpdateLightTransform(ULightComponent* Light) override;
 	virtual void UpdateLightColorAndBrightness(ULightComponent* Light) override;
-	virtual void AddMetaBallRender(class FMetaBallSceneInfo* MetaBallComponent) override;
+	virtual void AddMetaBallRender(const class FMetaBallSceneInfo* MetaBallComponent) override;
 	virtual void RemoveMetaBallRender() override;
 	virtual void AddExponentialHeightFog(UExponentialHeightFogComponent* FogComponent) override;
 	virtual void RemoveExponentialHeightFog(UExponentialHeightFogComponent* FogComponent) override;
